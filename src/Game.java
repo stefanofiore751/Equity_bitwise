@@ -5,7 +5,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class Game {
-        private final Player[] players = new Player[6];
+        private Player[] players = new Player[6];
         private int[] deck;
         private final LookupTable lookupTable = new LookupTable();
 
@@ -36,22 +36,45 @@ public class Game {
         public void play() throws InterruptedException {
                 deck = Deck.fullDeckArray();
                 insertPlayerCards();
-
                 // Pre-flop equity calculation
                 calculatePreFlopEquity();
                 fold();
                 // Draw flop cards and calculate flop equity
                 int[] flopCard = calculateFlopEquity();
-
+                fold();
                 int turnCard = calculateTurnEquity(flopCard);
+                fold();
                 calculateRiverEquity(flopCard,turnCard);
 
         }
 
         public void fold(){
-                int i = 0;
-                for (Player player : players) {
-                        System.out.println("player " + i++ + "want to fold? ");
+                Scanner myObj = new Scanner(System.in);
+
+                int activePlayerCount = players.length;
+
+                for (int i = 0; i < activePlayerCount; i++) {
+                        System.out.println(players[i] + ", do you want to fold? (yes/no)");
+                        String input = myObj.nextLine();
+
+                        if (input.equalsIgnoreCase("yes")) {
+                                // Shift all elements to the left, overwriting the current player
+                                for (int j = i; j < activePlayerCount - 1; j++) {
+                                        players[j] = players[j + 1];
+                                }
+                                players[activePlayerCount - 1] = null; // Clear the last element
+                                activePlayerCount--; // Decrease the count of active players
+                                i--; // Decrement index to handle the shifted element
+                        }
+                }
+
+                // Create a trimmed array to display the remaining players
+                Player[] remainingPlayers = new Player[activePlayerCount];
+                System.arraycopy(players, 0, remainingPlayers, 0, activePlayerCount);
+                players = remainingPlayers;
+                System.out.println("Remaining players:");
+                for (Player player : remainingPlayers) {
+                        System.out.println(player);
                 }
         }
 
