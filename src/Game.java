@@ -9,6 +9,7 @@ public class Game {
          int[] deck = Deck.fullDeckArray();
          final LookupTable lookupTable = new LookupTable();
          int[] table;
+
         public void generatePlayerCards() {
                 int index = 0;
                 for (int i = 0; i < players.length; i++) {
@@ -46,33 +47,12 @@ public class Game {
                 insertPlayerCards();
                 // Pre-flop equity calculation
                 calculatePreFlopEquity();
-                fold(0);
+                players[0].fold();
                 // Draw flop cards and calculate flop equity
                 calculateFlopEquity();
-                fold(1);
                 calculateTurnEquity();
-                fold(2);
                 calculateRiverEquity();
 
-        }
-
-        public void fold(int i){
-
-                int activePlayerCount = players.length;
-                                // Shift all elements to the left, overwriting the current player
-                                for (int j = i; j < activePlayerCount - 1; j++) {
-                                        players[j] = players[j + 1];
-                                }
-                                players[activePlayerCount - 1] = null; // Clear the last element
-                                activePlayerCount--; // Decrease the count of active players
-                                i--; // Decrement index to handle the shifted element
-
-
-
-                // Create a trimmed array to display the remaining players
-                Player[] remainingPlayers = new Player[activePlayerCount];
-                System.arraycopy(players, 0, remainingPlayers, 0, activePlayerCount);
-                players = remainingPlayers;
         }
 
         void calculatePreFlopEquity() throws InterruptedException {
@@ -99,7 +79,9 @@ public class Game {
                         try {
                                 double[] threadWins = future.get();
                                 for (int i = 0; i < totalWins.length; i++) {
-                                        totalWins[i] += threadWins[i];
+                                        if (!players[i].getFolded()) { // Exclude folded players
+                                                totalWins[i] += threadWins[i];
+                                        }
                                 }
                         } catch (ExecutionException e) {
                                 e.printStackTrace();
@@ -228,6 +210,8 @@ public class Game {
                 List<Integer> winners = new ArrayList<>();
 
                 for (int i = 0; i < players.length; i++) {
+                        if (players[i].getFolded()) continue; // Skip folded players
+
                         int rank = bestPlay(players[i].getCards(), communityCards);
                         if (rank < bestRank) {
                                 bestRank = rank;
@@ -290,15 +274,39 @@ public class Game {
 
         void printResults(double[] totalWins, int totalCombinations) {
                 for (int i = 0; i < players.length; i++) {
-                        double winPercentage = totalWins[i] / totalCombinations * 100;
-                        players[i].setEquity(winPercentage);
-                        System.out.println("Player " + i + " total wins = " + totalWins[i] + " percentage = " + String.format("%.2f", winPercentage) + "%");
+                        if (!players[i].getFolded()) { // Print only active players
+                                double winPercentage = totalWins[i] / totalCombinations * 100;
+                                players[i].setEquity(winPercentage);
+                                System.out.println("Player " + i + " total wins = " + totalWins[i] + " percentage = " + String.format("%.2f", winPercentage) + "%");
+                        }
                 }
 
                 System.out.println("\nPlayer Cards:");
                 for (int i = 0; i < players.length; i++) {
-                        int[] playerCards = players[i].getCards();
-                        System.out.println("Player " + i + ": " + Card.cardToString(playerCards[0]) + " " + Card.cardToString(playerCards[1]));
+                        if (!players[i].getFolded()) { // Print cards only for active players
+                                int[] playerCards = players[i].getCards();
+                                System.out.println("Player " + i + ": " + Card.cardToString(playerCards[0]) + " " + Card.cardToString(playerCards[1]));
+                        }
                 }
+        }
+        public void setPlayerCards(int i, int[] playerCards) {
+                players[i] = new Player(playerCards[0], playerCards[1]);
+        }
+
+        public void setTableCards(int[] tableCards) {
+                this.table = tableCards;
+        }
+
+        public int randomCard() {
+                int i = (int) (Math.random() * deck.length);
+                int temp = deck[i];
+               removeFromDeck(temp);
+                return temp;
+        }
+
+        public void removeFromDeck(int t){
+                Set<Integer> usedCards = new HashSet<>();
+                usedCards.add(t);
+                deck = Arrays.stream(deck).filter(card -> !usedCards.contains(card)).toArray();
         }
 }
