@@ -70,10 +70,13 @@ public class MainWindow extends JFrame {
         // Add the toolbar to the top of the window
         add(toolBar, BorderLayout.NORTH);
 
+        JPanel container = new JPanel(new BorderLayout());
+
         // Panel for the table cards
         cardsPanel = new JPanel();
         cardsPanel.setLayout(null); // Absolute positioning for custom layouts
         cardsPanel.setOpaque(false); // Transparent background
+        //add(cardsPanel, BorderLayout.CENTER);
         add(cardsPanel, BorderLayout.CENTER);
 
         // Lateral menu: Hand Distribution for Players
@@ -81,8 +84,10 @@ public class MainWindow extends JFrame {
         JScrollPane scrollPane = new JScrollPane(cardSelectionPanel);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); // No horizontal scrolling
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED); // Enable vertical scrolling
-        scrollPane.setPreferredSize(new Dimension(250, getHeight())); // Adjust width to fit content
+        //scrollPane.setPreferredSize(new Dimension(250, getHeight())); // Adjust width to fit content
         add(scrollPane, BorderLayout.EAST);
+
+        setMinimumSize(new Dimension(1350, 800));
 
         // Configure the window
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
