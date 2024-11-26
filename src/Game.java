@@ -5,15 +5,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class Game {
-        private Player[] players = new Player[6];
-        private int[] deck;
-        private final LookupTable lookupTable = new LookupTable();
-
+        Player[] players = new Player[6];
+         int[] deck = Deck.fullDeckArray();
+         final LookupTable lookupTable = new LookupTable();
+         int[] table;
         public void generatePlayerCards() {
                 int index = 0;
                 for (int i = 0; i < players.length; i++) {
                         players[i] = new Player(deck[index++], deck[index++]);
                 }
+        }
+
+        public Player[] getPlayers() {
+                return players;
+        }
+
+        public int[] getTable(){
+                return table;
         }
 
         public void insertPlayerCards() {
@@ -38,26 +46,19 @@ public class Game {
                 insertPlayerCards();
                 // Pre-flop equity calculation
                 calculatePreFlopEquity();
-                fold();
+                fold(0);
                 // Draw flop cards and calculate flop equity
-                int[] flopCard = calculateFlopEquity();
-                fold();
-                int turnCard = calculateTurnEquity(flopCard);
-                fold();
-                calculateRiverEquity(flopCard,turnCard);
+                calculateFlopEquity();
+                fold(1);
+                calculateTurnEquity();
+                fold(2);
+                calculateRiverEquity();
 
         }
 
-        public void fold(){
-                Scanner myObj = new Scanner(System.in);
+        public void fold(int i){
 
                 int activePlayerCount = players.length;
-
-                for (int i = 0; i < activePlayerCount; i++) {
-                        System.out.println(players[i] + ", do you want to fold? (yes/no)");
-                        String input = myObj.nextLine();
-
-                        if (input.equalsIgnoreCase("yes")) {
                                 // Shift all elements to the left, overwriting the current player
                                 for (int j = i; j < activePlayerCount - 1; j++) {
                                         players[j] = players[j + 1];
@@ -65,20 +66,16 @@ public class Game {
                                 players[activePlayerCount - 1] = null; // Clear the last element
                                 activePlayerCount--; // Decrease the count of active players
                                 i--; // Decrement index to handle the shifted element
-                        }
-                }
+
+
 
                 // Create a trimmed array to display the remaining players
                 Player[] remainingPlayers = new Player[activePlayerCount];
                 System.arraycopy(players, 0, remainingPlayers, 0, activePlayerCount);
                 players = remainingPlayers;
-                System.out.println("Remaining players:");
-                for (Player player : remainingPlayers) {
-                        System.out.println(player);
-                }
         }
 
-        private void calculatePreFlopEquity() throws InterruptedException {
+        void calculatePreFlopEquity() throws InterruptedException {
                 List<int[]> communityCardCombinations = generateCombinations(deck, 5);
 
                 // Multithreading setup
@@ -116,7 +113,7 @@ public class Game {
                 printResults(totalWins, communityCardCombinations.size());
         }
 
-        private double[] simulateGamesForBatch(List<int[]> batch) {
+        double[] simulateGamesForBatch(List<int[]> batch) {
                 double[] wins = new double[players.length];
                 for (int[] communityCards : batch) {
                         simulateGameForCommunityCombination(communityCards, wins);
@@ -124,14 +121,14 @@ public class Game {
                 return wins;
         }
 
-        private int[] calculateFlopEquity() {
+        void calculateFlopEquity() {
                 // Randomly draw a flop (3 cards) from the deck
                 List<Integer> deckList = new ArrayList<>();
                 for (int card : deck) {
                         deckList.add(card);
                 }
                 Collections.shuffle(deckList); // Shuffle the deck
-                int[] flop = {deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst()}; // Draw 3 cards for the flop
+                table = new int[]{deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst(),0,0}; // Draw 3 cards for the flop
 
                 // Remove the flop cards from the remaining deck
                 int[] remainingDeck = deckList.stream().mapToInt(Integer::intValue).toArray();
@@ -143,7 +140,7 @@ public class Game {
                 // Simulate games for this specific flop
                 for (int[] turnRiver : turnRiverCombinations) {
                         int[] communityCards = new int[5];
-                        System.arraycopy(flop, 0, communityCards, 0, 3);
+                        System.arraycopy(table, 0, communityCards, 0, 3);
                         System.arraycopy(turnRiver, 0, communityCards, 3, 2);
 
                         simulateGameForCommunityCombination(communityCards, totalWins);
@@ -155,22 +152,21 @@ public class Game {
                 printResults(totalWins, totalCombinations);
 
                 // Print the drawn flop cards
-                System.out.println("Drawn Flop: " + Card.cardToString(flop[0]) + ", " + Card.cardToString(flop[1]) + ", " + Card.cardToString(flop[2]));
-                return flop;
+                System.out.println("Drawn Flop: " + Card.cardToString(table[0]) + ", " + Card.cardToString(table[1]) + ", " + Card.cardToString(table[2]));
         }
 
-        private int calculateTurnEquity(int[] flop) {
+        void calculateTurnEquity() {
                 // Convert remaining deck into a list for shuffling
                 List<Integer> deckList = new ArrayList<>();
                 for (int card : deck) {
-                        if (Arrays.stream(flop).noneMatch(fc -> fc == card)) { // Exclude flop cards
+                        if (Arrays.stream(table).noneMatch(fc -> fc == card)) { // Exclude flop cards
                                 deckList.add(card);
                         }
                 }
                 Collections.shuffle(deckList);
 
                 // Draw the turn card
-                int turnCard = deckList.removeFirst();
+                table[3] = deckList.removeFirst();
 
                 // Generate all river combinations from the remaining deck
                 int[] remainingDeck = deckList.stream().mapToInt(Integer::intValue).toArray();
@@ -181,8 +177,8 @@ public class Game {
                 // Simulate games for this specific turn
                 for (int[] river : riverCombinations) {
                         int[] communityCards = new int[5];
-                        System.arraycopy(flop, 0, communityCards, 0, 3);
-                        communityCards[3] = turnCard;
+                        System.arraycopy(table, 0, communityCards, 0, 3);
+                        communityCards[3] = table[3];
                         communityCards[4] = river[0];
 
                         simulateGameForCommunityCombination(communityCards, totalWins);
@@ -194,28 +190,25 @@ public class Game {
                 printResults(totalWins, totalCombinations);
 
                 // Print the drawn turn card
-                System.out.println("Drawn Turn: " + Card.cardToString(flop[0])+ ", "+ Card.cardToString(flop[1])+ ", "+ Card.cardToString(flop[2])+ ", " + Card.cardToString(turnCard));
-                return turnCard;
+                System.out.println("Drawn Turn: " + Card.cardToString(table[0])+ ", "+ Card.cardToString(table[1])+ ", "+ Card.cardToString(table[2])+ ", " + Card.cardToString(table[3]));
         }
 
-        private void calculateRiverEquity(int[] flop, int turnCard) {
+        void calculateRiverEquity() {
                 // Convert remaining deck into a list for shuffling
                 List<Integer> deckList = new ArrayList<>();
                 for (int card : deck) {
-                        if (Arrays.stream(flop).noneMatch(fc -> fc == card) && card != turnCard) { // Exclude flop and turn cards
+                        if (Arrays.stream(table).noneMatch(fc -> fc == card)) { // Exclude flop and turn cards
                                 deckList.add(card);
                         }
                 }
                 Collections.shuffle(deckList);
 
                 // Draw the river card
-                int riverCard = deckList.removeFirst();
+                table[4] = deckList.removeFirst();
 
                 // Form the full community cards
                 int[] communityCards = new int[5];
-                System.arraycopy(flop, 0, communityCards, 0, 3);
-                communityCards[3] = turnCard;
-                communityCards[4] = riverCard;
+                System.arraycopy(table, 0, communityCards, 0, 5);
 
                 double[] totalWins = new double[players.length];
 
@@ -227,7 +220,7 @@ public class Game {
                 printResults(totalWins, 1);
 
                 // Print the drawn river card
-                System.out.println("Drawn river: " + Card.cardToString(flop[0])+ ", "+ Card.cardToString(flop[1])+ ", "+ Card.cardToString(flop[2])+ ", " + Card.cardToString(turnCard) +  ", " + Card.cardToString(riverCard)) ;
+                System.out.println("Drawn river: " + Card.cardToString(table[0])+ ", "+ Card.cardToString(table[1])+ ", "+ Card.cardToString(table[2])+ ", " + Card.cardToString(table[3]) +  ", " + Card.cardToString(table[4])) ;
         }
 
         private void simulateGameForCommunityCombination(int[] communityCards, double[] wins) {
@@ -267,7 +260,7 @@ public class Game {
                 return bestRank;
         }
 
-        private List<int[]> generateCombinations(int[] cards, int k) {
+        List<int[]> generateCombinations(int[] cards, int k) {
                 List<int[]> combinations = new ArrayList<>();
                 int[] indices = new int[k];
                 for (int i = 0; i < k; i++) {
@@ -295,9 +288,10 @@ public class Game {
                 return combinations;
         }
 
-        private void printResults(double[] totalWins, int totalCombinations) {
+        void printResults(double[] totalWins, int totalCombinations) {
                 for (int i = 0; i < players.length; i++) {
                         double winPercentage = totalWins[i] / totalCombinations * 100;
+                        players[i].setEquity(winPercentage);
                         System.out.println("Player " + i + " total wins = " + totalWins[i] + " percentage = " + String.format("%.2f", winPercentage) + "%");
                 }
 

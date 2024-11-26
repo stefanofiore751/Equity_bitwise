@@ -3,34 +3,36 @@ import java.util.ArrayList;
 public class Player {
     private int Card1;
     private int Card2;
-    private int wins;
-    private int ties;
+    private int Card3;
+    private int Card4;
+    private double equity;
 
     public Player(int Card1, int Card2) {
         this.Card1 = Card1;
         this.Card2 = Card2;
+        this.Card3 = 0;
+        this.Card4 = 0;
     }
 
-    public int getCard1() {
-        return Card1;
+    public Player(int Card1, int Card2, int Card3, int Card4) {
+        this.Card1 = Card1;
+        this.Card2 = Card2;
+        this.Card3 = Card3;
+        this.Card4 = Card4;
     }
 
-    public int getCard2() {
-        return Card2;
+    public void setEquity (double equity) {
+        this.equity = equity;
     }
 
-    public void addWin(){
-        wins++;
-    }
-
-    public int getWins() {
-        return wins;
+    public double getEquity() {
+        return equity;
     }
 
     public int[] getCards() {
-        int[] cards = new int[2];
-        cards[0] = Card1;
-        cards[1] = Card2;
-        return cards;
+        if(Card3 != 0 && Card4 != 0){
+            return new int[]{Card1,Card2,Card3, Card4};
+        }
+        return new int[]{Card1,Card2};
     }
 }
