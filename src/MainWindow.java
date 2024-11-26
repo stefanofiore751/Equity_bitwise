@@ -110,7 +110,6 @@ public class MainWindow extends JFrame {
 
             // Pulsanti per distribuire (R) o rimuovere (D) le carte
             JButton distributeButton = new JButton("R");
-            JButton clearButton = new JButton("D");
 
             // Pulsante "R" per assegnare le carte al giocatore
             int finalI = i;
@@ -137,20 +136,12 @@ public class MainWindow extends JFrame {
                 }
             });
 
-            // Pulsante "D" per rimuovere le carte del giocatore
-            int finalI1 = i;
-            clearButton.addActionListener(_ -> {
-                card1Box.setSelectedIndex(0);
-                card2Box.setSelectedIndex(0);
-                game.getPlayers()[finalI1].setCards(0, 0); // Rimuove le carte
-                System.out.println("Cards cleared for Player " + (finalI1 + 1));
-            });
+
 
             // Aggiungi i componenti al pannello del giocatore
             playerPanel.add(card1Box);
             playerPanel.add(card2Box);
             playerPanel.add(distributeButton);
-            playerPanel.add(clearButton);
 
             // Aggiungi il pannello del giocatore al pannello principale
             panel.add(playerPanel);
