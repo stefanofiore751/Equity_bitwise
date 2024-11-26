@@ -65,12 +65,12 @@ public class OmahaGame extends Game {
         insertPlayerCards();
         // Pre-flop equity calculation
         calculatePreFlopEquity();
-        fold(0);
+        //fold(0);
         // Draw flop cards and calculate flop equity
         calculateFlopEquity();
-        fold(1);
+        //fold(1);
         calculateTurnEquity();
-        fold(2);
+        //fold(2);
         calculateRiverEquity();
     }
 
