@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 import java.util.LinkedList;
 
 public class MainWindow extends JFrame {
@@ -112,7 +113,9 @@ public class MainWindow extends JFrame {
 
     private void setBackground() {
         // Immagine di sfondo
-        ImageIcon BackGroundImage = scaleImage("C:\\Users\\stefi\\Documents\\GitHub\\poker_software_ucm\\poker\\images\\mesa3.jpg", 0.62);
+
+        String path = new File("images/mesa3.jpg").getAbsolutePath();
+        ImageIcon BackGroundImage = scaleImage(path, 0.62);
         setSize(BackGroundImage.getIconWidth(), BackGroundImage.getIconHeight());
 
         JLabel BackGroundLabel = new JLabel(BackGroundImage);
@@ -147,8 +150,9 @@ public class MainWindow extends JFrame {
 
         for (int j : mano) {
             if (Card.getRank(j) != '\r') {
+                String path = new File("images/cartas").getAbsolutePath();
                 String name = Card.cardToString(j) + ".png";
-                ImageIcon image = scaleImage("C:\\Users\\stefi\\Documents\\GitHub\\poker_software_ucm\\poker\\images\\cartas\\" + name, 0.09);
+                ImageIcon image = scaleImage(path + "\\" + name, 0.09);
 
                 JLabel label = new JLabel(image);
                 cardsPanel.add(label);
@@ -215,8 +219,9 @@ public class MainWindow extends JFrame {
         for (int i : mesa) {
             if (i != 0) {
                 if (Card.getRank(i) != '\r') {
+                    String path = new File("images/cartas").getAbsolutePath();
                     String name = Card.cardToString(i) + ".png";
-                    ImageIcon image = scaleImage("C:\\Users\\stefi\\Documents\\GitHub\\poker_software_ucm\\poker\\images\\cartas\\" + name, 0.12);
+                    ImageIcon image = scaleImage(path + "\\" + name, 0.12);
 
                     JLabel label = new JLabel(image);
                     panel.add(label);
