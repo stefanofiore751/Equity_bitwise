@@ -87,6 +87,10 @@ public class Card {
         return (card >> 8) & 0xF;
     }
 
+    public static char getRankChar(int card) {
+        return (char) (getRank(card) & 0x3F);
+    }
+
     public static int getRankBit(int card) {
         int rank = getRank(card); // Extract rank from the card
         return 1 << rank;        // Return the bitmask for this rank
