@@ -2,18 +2,6 @@ import java.util.*;
 
 
 public class OmahaGame extends Game {
-    @Override
-    public void generatePlayerCards() {
-        List<Integer> deckList = new ArrayList<>();
-        for (int card : deck) {
-            deckList.add(card);
-        }
-        Collections.shuffle(deckList);
-        for(int i = 0; i < players.length; i++) {
-            players[i] = new Player(deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst());
-        }
-        deck = deckList.stream().mapToInt(Integer::intValue).toArray();
-    }
 
     @Override
     public void insertPlayerCards() {

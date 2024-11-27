@@ -16,6 +16,15 @@ public class Player {
         this.folded = false;
     }
 
+    public Player(int[] cards) {
+        if (cards.length == 4) {
+            this.Card3 = cards[2];
+            this.Card4 = cards[3];
+        }
+        this.Card1 = cards[0];
+        this.Card2 = cards[1];
+    }
+
     public void fold() {
         this.folded = true;
     }

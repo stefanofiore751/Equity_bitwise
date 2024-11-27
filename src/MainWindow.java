@@ -6,6 +6,7 @@ import java.util.Objects;
 
 public class MainWindow extends JFrame {
 
+    private boolean isOmaha = false; // Indicates whether Omaha mode is active
     private int cont = 0;
     private LinkedList<Point> coord;
     Game game = new Game();
@@ -14,17 +15,63 @@ public class MainWindow extends JFrame {
     private JPanel cardsPanel;
 
     public MainWindow() {
+        initCoordinates();
         initGUI();
     }
 
+    private JPanel createBackgroundPanel() {
+        JPanel backgroundPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                String path = new File("images/mesa3.jpg").getAbsolutePath();
+                ImageIcon backgroundImage = scaleImage(path, 0.62);
+                g.drawImage(backgroundImage.getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+
+        backgroundPanel.setLayout(null); // Allows custom positioning
+        backgroundPanel.setOpaque(true); // Ensure the background image is visible
+
+        // Add the cardsPanel over the background
+        cardsPanel = new JPanel();
+        cardsPanel.setLayout(null); // Allows absolute positioning of cards
+        cardsPanel.setOpaque(false); // Transparency for overlaying
+        cardsPanel.setBounds(0, 0, 1350, 800); // Match size of the main window
+        backgroundPanel.add(cardsPanel);
+
+        return backgroundPanel;
+    }
+
+
+
     private void initGUI() {
-        setBackground();
-        initCoordinates();
-
-        // Set the main layout of the window
+        // Set main layout
         setLayout(new BorderLayout());
+        // Add the toolbar to the top
+        JToolBar toolBar = getjToolBar();
+        add(toolBar, BorderLayout.NORTH);
 
-        // Toolbar
+        // Add the lateral menu to the right
+        JPanel cardSelectionPanel = createCardSelectionPanel();
+        JScrollPane scrollPane = new JScrollPane(cardSelectionPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        add(scrollPane, BorderLayout.EAST);
+
+        // Add the center panel with the background image
+        add(createBackgroundPanel(), BorderLayout.CENTER);
+
+        // Configure the window
+        setMinimumSize(new Dimension(1350, 800));
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+
+    private JToolBar getjToolBar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false); // Toolbar cannot be moved
         toolBar.setLayout(new FlowLayout(FlowLayout.LEFT)); // Buttons aligned to the left
@@ -35,6 +82,7 @@ public class MainWindow extends JFrame {
             try {
                 game.calculatePreFlopEquity();
                 updatePlayersEquity();
+                startButton.setEnabled(false);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -66,95 +114,118 @@ public class MainWindow extends JFrame {
         // Add buttons to the toolbar
         toolBar.add(startButton);
         toolBar.add(continueButton);
-
-        // Add the toolbar to the top of the window
-        add(toolBar, BorderLayout.NORTH);
-
-        JPanel container = new JPanel(new BorderLayout());
-
-        // Panel for the table cards
-        cardsPanel = new JPanel();
-        cardsPanel.setLayout(null); // Absolute positioning for custom layouts
-        cardsPanel.setOpaque(false); // Transparent background
-        //add(cardsPanel, BorderLayout.CENTER);
-        add(cardsPanel, BorderLayout.CENTER);
-
-        // Lateral menu: Hand Distribution for Players
-        JPanel cardSelectionPanel = createCardSelectionPanel();
-        JScrollPane scrollPane = new JScrollPane(cardSelectionPanel);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); // No horizontal scrolling
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED); // Enable vertical scrolling
-        //scrollPane.setPreferredSize(new Dimension(250, getHeight())); // Adjust width to fit content
-        add(scrollPane, BorderLayout.EAST);
-
-        setMinimumSize(new Dimension(1350, 800));
-
-        // Configure the window
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false);
-        setLocationRelativeTo(null);
-        setVisible(true); // Show the window
+        return toolBar;
     }
 
 
     private JPanel createCardSelectionPanel() {
         JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(7, 1, 5, 5)); // Layout a griglia con 7 righe (6 giocatori + 1 spazio vuoto)
+        panel.setLayout(new GridLayout(8, 1, 5, 5)); // Layout with 8 rows (6 players + 1 table card section)
         panel.setBorder(BorderFactory.createTitledBorder("Hand Distribution"));
 
-        JComboBox<String>[] cardBoxes = new JComboBox[12]; // Per 6 giocatori, 2 carte ciascuno
+        JComboBox<String>[] cardBoxes = new JComboBox[12]; // For 6 players, 2 cards each
         for (int i = 0; i < 6; i++) {
             JPanel playerPanel = new JPanel();
             playerPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
             playerPanel.setBorder(BorderFactory.createTitledBorder("Player " + (i + 1)));
 
-            // Dropdown per la selezione delle carte
+            // Dropdown for card selection
             JComboBox<String> card1Box = createCardComboBox();
             JComboBox<String> card2Box = createCardComboBox();
             cardBoxes[i * 2] = card1Box;
             cardBoxes[i * 2 + 1] = card2Box;
 
-            // Pulsanti per distribuire (R) o rimuovere (D) le carte
+            // Button for dealing the cards (R)
             JButton distributeButton = new JButton("R");
 
-            // Pulsante "R" per assegnare le carte al giocatore
             int finalI = i;
             distributeButton.addActionListener(_ -> {
                 try {
-                    int card1,card2;
-                    if(Objects.equals(card1Box.getSelectedItem(), "R")) {
+                    int card1, card2;
+                    boolean used = false;
+                    // Handle random card selection
+                    if ("R".equals(cardBoxes[finalI * 2].getSelectedItem())) {
                         card1 = game.randomCard();
-                    }else {
-                        card1 = parseCard((String) card1Box.getSelectedItem());
-                        game.removeFromDeck(card1);
+                    } else {
+                        card1 = parseCard((String) cardBoxes[finalI * 2].getSelectedItem());
+                        if(!game.presentInDeck(card1)) {
+                            JOptionPane.showMessageDialog(this, "Card already used!", "Error", JOptionPane.ERROR_MESSAGE);
+                            used = true;
+                        }
+                        else
+                            if(game.presentInDeck(parseCard((String) cardBoxes[finalI * 2 + 1].getSelectedItem())))
+                                game.removeFromDeck(card1);
+
                     }
-                    if(Objects.equals(card2Box.getSelectedItem(), "R")) {
+                    if ("R".equals(cardBoxes[finalI * 2 + 1].getSelectedItem())) {
                         card2 = game.randomCard();
                         game.removeFromDeck(card2);
-                    }else {
-                        card2 = parseCard((String) card2Box.getSelectedItem());
+                    } else {
+                        card2 = parseCard((String) cardBoxes[finalI * 2 + 1].getSelectedItem());
+                        if(!game.presentInDeck(card2)) {
+                            JOptionPane.showMessageDialog(this, "Card already used!", "Error", JOptionPane.ERROR_MESSAGE);
+                            used = true;
+                        }
+                        else
+                            game.removeFromDeck(card2);
                     }
-                        game.getPlayers()[finalI] = new Player(card1, card2);
-                        cartasJugador(game.getPlayers()[finalI]);
 
+                    // Assign the cards to the player
+                    if(!used){
+                    game.getPlayers()[finalI] = new Player(card1, card2);
+                    cartasJugador(game.getPlayers()[finalI]);
+                    distributeButton.setEnabled(false);
+                    }
                 } catch (IllegalArgumentException ex) {
                     JOptionPane.showMessageDialog(this, "Invalid card selection!", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
-
-
-            // Aggiungi i componenti al pannello del giocatore
             playerPanel.add(card1Box);
             playerPanel.add(card2Box);
             playerPanel.add(distributeButton);
 
-            // Aggiungi il pannello del giocatore al pannello principale
             panel.add(playerPanel);
         }
 
+        // Table Cards Selection Section
+        JPanel tableCardPanel = new JPanel();
+        tableCardPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        tableCardPanel.setBorder(BorderFactory.createTitledBorder("Table Cards"));
+
+        // Dropdown to select a table card
+        JComboBox<String> tableCardBox = createCardComboBox();
+        tableCardPanel.add(tableCardBox);
+
+        // Button to add selected card to the table
+        JButton addTableCardButton = new JButton("Add Table Card");
+        addTableCardButton.addActionListener(_ -> {
+            try {
+                String selectedCard = (String) tableCardBox.getSelectedItem();
+                if (selectedCard == null || "R".equals(selectedCard)) {
+                    JOptionPane.showMessageDialog(this, "Select a valid card!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                int card = parseCard(selectedCard);
+                // Add the card to the table (assuming game.addToTable handles the addition)
+                if (game.addTableCard(card)) {
+                    // Update the table cards display
+                    cartasMesa(game.getTable()); // Redraw the table cards
+                } else {
+                    JOptionPane.showMessageDialog(this, "Card already used.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid card selection!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        tableCardPanel.add(addTableCardButton);
+        panel.add(tableCardPanel);
+
         return panel;
     }
+
 
     // Metodo per aggiornare l'equity dei giocatori
     private void updatePlayersEquity() {
@@ -186,25 +257,13 @@ public class MainWindow extends JFrame {
         cardsPanel.repaint();
     }
 
-    private void setBackground() {
-        // Immagine di sfondo
-
-        String path = new File("images/mesa3.jpg").getAbsolutePath();
-        ImageIcon BackGroundImage = scaleImage(path, 0.62);
-        setSize(BackGroundImage.getIconWidth(), BackGroundImage.getIconHeight());
-
-        JLabel BackGroundLabel = new JLabel(BackGroundImage);
-        setContentPane(BackGroundLabel); // Imposta lo sfondo
-        BackGroundLabel.setLayout(null);
-    }
-
     public ImageIcon scaleImage(String path, double scaleFactor) {
         ImageIcon imageIcon = new ImageIcon(path);
         Image img = imageIcon.getImage();
 
         int imgWidth = imageIcon.getIconWidth();
         int imgHeight = imageIcon.getIconHeight();
-
+        System.out.println(imgWidth + " " + imgHeight);
         int newWidth = (int) (imgWidth * scaleFactor);
         int newHeight = (int) (imgHeight * scaleFactor);
 
@@ -320,7 +379,7 @@ public class MainWindow extends JFrame {
         panel.setOpaque(false);
 
         // Posiziona il pannello delle carte sul tavolo
-        panel.setBounds(620 - (widthPanel / 2), 200, widthPanel, heightPanel);
+        panel.setBounds(560 - (widthPanel / 2), 250, widthPanel, heightPanel);
 
         // Aggiungi il nuovo pannello delle carte al pannello principale
         cardsPanel.add(panel);
@@ -333,12 +392,12 @@ public class MainWindow extends JFrame {
 
     private void initCoordinates() {
         coord = new LinkedList<>();
-        coord.add(new Point(1000, 120));
-        coord.add(new Point(1020, 370));
-        coord.add(new Point(770, 490));
-        coord.add(new Point(450, 490));
-        coord.add(new Point(200, 370));
-        coord.add(new Point(190, 120));
+        coord.add(new Point(950, 200));
+        coord.add(new Point(950, 500));
+        coord.add(new Point(730, 620));
+        coord.add(new Point(420, 620));
+        coord.add(new Point(190, 500));
+        coord.add(new Point(190, 200));
     }
 
     private JComboBox<String> createCardComboBox() {
@@ -356,6 +415,7 @@ public class MainWindow extends JFrame {
 
         return new JComboBox<>(cards);
     }
+
 
     private int parseCard(String card) throws IllegalArgumentException {
         if (card == null || card.length() != 2) {

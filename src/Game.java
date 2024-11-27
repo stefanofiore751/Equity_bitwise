@@ -8,14 +8,8 @@ public class Game {
         Player[] players = new Player[6];
          int[] deck = Deck.fullDeckArray();
          final LookupTable lookupTable = new LookupTable();
-         int[] table;
+         int[] table = new int[5];
 
-        public void generatePlayerCards() {
-                int index = 0;
-                for (int i = 0; i < players.length; i++) {
-                        players[i] = new Player(deck[index++], deck[index++]);
-                }
-        }
 
         public Player[] getPlayers() {
                 return players;
@@ -84,7 +78,8 @@ public class Game {
                                         }
                                 }
                         } catch (ExecutionException e) {
-                                e.printStackTrace();
+                            //noinspection CallToPrintStackTrace
+                            e.printStackTrace();
                         }
                 }
 
@@ -104,19 +99,22 @@ public class Game {
         }
 
         void calculateFlopEquity() {
-                // Randomly draw a flop (3 cards) from the deck
                 List<Integer> deckList = new ArrayList<>();
-                for (int card : deck) {
-                        deckList.add(card);
+                // Randomly draw a flop (3 cards) from the deck
+                if(!(tableCard() == 3)){
+                        for (int card : deck) {
+                                deckList.add(card);
+                        }
+                        Collections.shuffle(deckList); // Shuffle the deck
+                        table = new int[]{deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst(),0,0}; // Draw 3 cards for the flop
+                        deck = deckList.stream().mapToInt(Integer::intValue).toArray();
                 }
-                Collections.shuffle(deckList); // Shuffle the deck
-                table = new int[]{deckList.removeFirst(), deckList.removeFirst(), deckList.removeFirst(),0,0}; // Draw 3 cards for the flop
 
                 // Remove the flop cards from the remaining deck
-                int[] remainingDeck = deckList.stream().mapToInt(Integer::intValue).toArray();
+
 
                 // Generate all turn and river combinations
-                List<int[]> turnRiverCombinations = generateCombinations(remainingDeck, 2);
+                List<int[]> turnRiverCombinations = generateCombinations(deck, 2);
                 double[] totalWins = new double[players.length];
 
                 // Simulate games for this specific flop
@@ -140,19 +138,20 @@ public class Game {
         void calculateTurnEquity() {
                 // Convert remaining deck into a list for shuffling
                 List<Integer> deckList = new ArrayList<>();
-                for (int card : deck) {
-                        if (Arrays.stream(table).noneMatch(fc -> fc == card)) { // Exclude flop cards
+                if(!(tableCard() == 4)){
+                        for (int card : deck)
+                                // Exclude flop cards
                                 deckList.add(card);
-                        }
-                }
-                Collections.shuffle(deckList);
 
-                // Draw the turn card
-                table[3] = deckList.removeFirst();
+                        Collections.shuffle(deckList);
+
+                        // Draw the turn card
+                        table[3] = deckList.removeFirst();
+                        deck = deckList.stream().mapToInt(Integer::intValue).toArray();
+                }
 
                 // Generate all river combinations from the remaining deck
-                int[] remainingDeck = deckList.stream().mapToInt(Integer::intValue).toArray();
-                List<int[]> riverCombinations = generateCombinations(remainingDeck, 1);
+                List<int[]> riverCombinations = generateCombinations(deck, 1);
 
                 double[] totalWins = new double[players.length];
 
@@ -178,15 +177,15 @@ public class Game {
         void calculateRiverEquity() {
                 // Convert remaining deck into a list for shuffling
                 List<Integer> deckList = new ArrayList<>();
-                for (int card : deck) {
-                        if (Arrays.stream(table).noneMatch(fc -> fc == card)) { // Exclude flop and turn cards
+                if(!(tableCard() == 5)){
+                        for (int card : deck)
                                 deckList.add(card);
-                        }
-                }
-                Collections.shuffle(deckList);
+                        Collections.shuffle(deckList);
 
-                // Draw the river card
-                table[4] = deckList.removeFirst();
+                        // Draw the river card
+                        table[4] = deckList.removeFirst();
+                }
+
 
                 // Form the full community cards
                 int[] communityCards = new int[5];
@@ -289,12 +288,26 @@ public class Game {
                         }
                 }
         }
-        public void setPlayerCards(int i, int[] playerCards) {
-                players[i] = new Player(playerCards[0], playerCards[1]);
+
+        public boolean addTableCard(int card){
+                if(!presentInDeck(card))
+                        return false;
+                for (int i = 0; i < table.length; i++) {
+                        if (table[i] == 0) {
+                                table[i] = card;
+                                removeFromDeck(card);
+                                return true;
+                        }
+                }
+                return false;
         }
 
-        public void setTableCards(int[] tableCards) {
-                this.table = tableCards;
+        public boolean presentInDeck(int card){
+            for (int j : deck) {
+                if (j == card)
+                    return true;
+            }
+                return false;
         }
 
         public int randomCard() {
@@ -308,5 +321,13 @@ public class Game {
                 Set<Integer> usedCards = new HashSet<>();
                 usedCards.add(t);
                 deck = Arrays.stream(deck).filter(card -> !usedCards.contains(card)).toArray();
+        }
+
+        public int tableCard(){
+                int i = 0;
+                for(int t : table)
+                        if(t != 0)
+                                i++;
+                return i;
         }
 }
