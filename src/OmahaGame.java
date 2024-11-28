@@ -66,6 +66,7 @@ public class OmahaGame extends Game {
     void printResults(double[] totalWins, int totalCombinations) {
         for (int i = 0; i < players.length; i++) {
             double winPercentage = totalWins[i] / totalCombinations * 100;
+            players[i].setEquity(winPercentage);
             System.out.println("Player " + i + " total wins = " + totalWins[i] + " percentage = " + String.format("%.2f", winPercentage) + "%");
         }
 

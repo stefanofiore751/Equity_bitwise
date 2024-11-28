@@ -2,18 +2,19 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.util.LinkedList;
-import java.util.Objects;
 
 public class MainWindow extends JFrame {
 
-    private boolean isOmaha = false; // Indicates whether Omaha mode is active
+    private boolean isOmaha = false;
     private int cont = 0;
     private LinkedList<Point> coord;
     Game game = new Game();
     boolean[] fase = new boolean[3];
     // Pannello principale per le carte
     private JPanel cardsPanel;
-
+    private JPanel containerPanel; // Contenitore principale per i pannelli
+    private JPanel cardSelectionPanel;
+    private JScrollPane scrollPane;// Pannello di selezione delle carte
     public MainWindow() {
         initCoordinates();
         initGUI();
@@ -46,29 +47,34 @@ public class MainWindow extends JFrame {
 
 
     private void initGUI() {
-        // Set main layout
-        setLayout(new BorderLayout());
-        // Add the toolbar to the top
-        JToolBar toolBar = getjToolBar();
-        add(toolBar, BorderLayout.NORTH);
+        containerPanel = new JPanel();
+        containerPanel.setLayout(new BorderLayout());
 
-        // Add the lateral menu to the right
-        JPanel cardSelectionPanel = createCardSelectionPanel();
-        JScrollPane scrollPane = new JScrollPane(cardSelectionPanel);
+        // Toolbar in alto
+        JToolBar toolBar = getjToolBar();
+        containerPanel.add(toolBar, BorderLayout.NORTH);
+
+        // Pannello laterale per la selezione delle carte
+        cardSelectionPanel = createCardSelectionPanel();
+        scrollPane = new JScrollPane(cardSelectionPanel);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        add(scrollPane, BorderLayout.EAST);
+        containerPanel.add(scrollPane, BorderLayout.EAST);
 
-        // Add the center panel with the background image
-        add(createBackgroundPanel(), BorderLayout.CENTER);
+        // Pannello centrale con l'immagine di sfondo
+        containerPanel.add(createBackgroundPanel(), BorderLayout.CENTER);
 
-        // Configure the window
+        // Aggiungi il containerPanel alla finestra principale
+        add(containerPanel, BorderLayout.CENTER);
+
+        // Configurazione della finestra principale
         setMinimumSize(new Dimension(1350, 800));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setLocationRelativeTo(null);
         setVisible(true);
     }
+
 
 
     private JToolBar getjToolBar() {
@@ -111,9 +117,25 @@ public class MainWindow extends JFrame {
             updatePlayersEquity();
         });
 
+        JButton startOmahaGameButton = new JButton(" Omaha Mode");
+        startOmahaGameButton.addActionListener(_ -> {
+            game = new OmahaGame();
+            isOmaha = true; // Set the game mode to Omaha
+            refreshCardSelectionPanel();
+            startOmahaGameButton.setEnabled(false);// Refresh the panel dynamically
+        });
+
+        JButton resetMatch = new JButton("New game");
+        resetMatch.addActionListener(_ -> {
+            SwingUtilities.invokeLater(MainWindow::new);
+            MainWindow.this.dispose();
+        });
+
         // Add buttons to the toolbar
         toolBar.add(startButton);
+        toolBar.add(startOmahaGameButton);
         toolBar.add(continueButton);
+        toolBar.add(resetMatch);
         return toolBar;
     }
 
@@ -123,68 +145,61 @@ public class MainWindow extends JFrame {
         panel.setLayout(new GridLayout(8, 1, 5, 5)); // Layout with 8 rows (6 players + 1 table card section)
         panel.setBorder(BorderFactory.createTitledBorder("Hand Distribution"));
 
-        JComboBox<String>[] cardBoxes = new JComboBox[12]; // For 6 players, 2 cards each
+        int cardsPerPlayer = isOmaha ? 4 : 2; // Dynamically set the cards per player
+        JComboBox<String>[] cardBoxes = new JComboBox[6 * cardsPerPlayer]; // Adjust for Omaha (6 players * 4 cards)
+
         for (int i = 0; i < 6; i++) {
             JPanel playerPanel = new JPanel();
             playerPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
             playerPanel.setBorder(BorderFactory.createTitledBorder("Player " + (i + 1)));
 
-            // Dropdown for card selection
-            JComboBox<String> card1Box = createCardComboBox();
-            JComboBox<String> card2Box = createCardComboBox();
-            cardBoxes[i * 2] = card1Box;
-            cardBoxes[i * 2 + 1] = card2Box;
+            // Card dropdowns for the player
+            JComboBox<String>[] playerCardBoxes = new JComboBox[cardsPerPlayer];
+            for (int j = 0; j < cardsPerPlayer; j++) {
+                playerCardBoxes[j] = createCardComboBox();
+                cardBoxes[i * cardsPerPlayer + j] = playerCardBoxes[j];
+                playerPanel.add(playerCardBoxes[j]);
+            }
 
-            // Button for dealing the cards (R)
+            // Button to deal cards
             JButton distributeButton = new JButton("R");
 
             int finalI = i;
             distributeButton.addActionListener(_ -> {
                 try {
-                    int card1, card2;
                     boolean used = false;
-                    // Handle random card selection
-                    if ("R".equals(cardBoxes[finalI * 2].getSelectedItem())) {
-                        card1 = game.randomCard();
-                    } else {
-                        card1 = parseCard((String) cardBoxes[finalI * 2].getSelectedItem());
-                        if(!game.presentInDeck(card1)) {
-                            JOptionPane.showMessageDialog(this, "Card already used!", "Error", JOptionPane.ERROR_MESSAGE);
-                            used = true;
-                        }
-                        else
-                            if(game.presentInDeck(parseCard((String) cardBoxes[finalI * 2 + 1].getSelectedItem())))
-                                game.removeFromDeck(card1);
+                    int[] selectedCards = new int[cardsPerPlayer];
 
-                    }
-                    if ("R".equals(cardBoxes[finalI * 2 + 1].getSelectedItem())) {
-                        card2 = game.randomCard();
-                        game.removeFromDeck(card2);
-                    } else {
-                        card2 = parseCard((String) cardBoxes[finalI * 2 + 1].getSelectedItem());
-                        if(!game.presentInDeck(card2)) {
-                            JOptionPane.showMessageDialog(this, "Card already used!", "Error", JOptionPane.ERROR_MESSAGE);
-                            used = true;
+                    // Process each card for the player
+                    for (int j = 0; j < cardsPerPlayer; j++) {
+                        String selectedCard = (String) playerCardBoxes[j].getSelectedItem();
+                        if ("R".equals(selectedCard)) {
+                            selectedCards[j] = game.randomCard();
+                        } else {
+                            int card = parseCard(selectedCard);
+                            if (!game.presentInDeck(card)) {
+                                JOptionPane.showMessageDialog(this, "Card already used!", "Error", JOptionPane.ERROR_MESSAGE);
+                                used = true;
+                                break;
+                            } else {
+                                selectedCards[j] = card;
+                                game.removeFromDeck(card);
+                            }
                         }
-                        else
-                            game.removeFromDeck(card2);
                     }
 
-                    // Assign the cards to the player
-                    if(!used){
-                    game.getPlayers()[finalI] = new Player(card1, card2);
-                    cartasJugador(game.getPlayers()[finalI]);
-                    distributeButton.setEnabled(false);
+                    if (!used) {
+                        // Assign the cards to the player
+                        game.getPlayers()[finalI] = new Player(selectedCards);
+                        cartasJugador(game.getPlayers()[finalI]); // Update player cards display
+                        distributeButton.setEnabled(false);
                     }
                 } catch (IllegalArgumentException ex) {
                     JOptionPane.showMessageDialog(this, "Invalid card selection!", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
-            playerPanel.add(card1Box);
-            playerPanel.add(card2Box);
             playerPanel.add(distributeButton);
-
             panel.add(playerPanel);
         }
 
@@ -202,16 +217,15 @@ public class MainWindow extends JFrame {
         addTableCardButton.addActionListener(_ -> {
             try {
                 String selectedCard = (String) tableCardBox.getSelectedItem();
-                if (selectedCard == null || "R".equals(selectedCard)) {
-                    JOptionPane.showMessageDialog(this, "Select a valid card!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
+                if ("R".equals(selectedCard)) {
+                   if(game.addTableCard(game.randomCard(),true))
+                       cartasMesa(game.getTable());
+                   return;
                 }
 
                 int card = parseCard(selectedCard);
-                // Add the card to the table (assuming game.addToTable handles the addition)
-                if (game.addTableCard(card)) {
-                    // Update the table cards display
-                    cartasMesa(game.getTable()); // Redraw the table cards
+                if (game.addTableCard(card,false)) {
+                    cartasMesa(game.getTable()); // Update the table cards display
                 } else {
                     JOptionPane.showMessageDialog(this, "Card already used.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -225,6 +239,7 @@ public class MainWindow extends JFrame {
 
         return panel;
     }
+
 
 
     // Metodo per aggiornare l'equity dei giocatori
@@ -263,7 +278,7 @@ public class MainWindow extends JFrame {
 
         int imgWidth = imageIcon.getIconWidth();
         int imgHeight = imageIcon.getIconHeight();
-        System.out.println(imgWidth + " " + imgHeight);
+
         int newWidth = (int) (imgWidth * scaleFactor);
         int newHeight = (int) (imgHeight * scaleFactor);
 
@@ -423,9 +438,29 @@ public class MainWindow extends JFrame {
         }
         char rank = card.charAt(0);
         char suit = card.charAt(1);
-        String a = new StringBuilder().append(rank).append(suit).toString();
+        String a = String.valueOf(rank) + suit;
         return Card.cardFromChar(a); // Implement `stringToCard` in your `Card` class.
     }
+
+    private void refreshCardSelectionPanel() {
+        // Rimuovi il vecchio pannello di selezione delle carte
+        containerPanel.remove(scrollPane);
+
+        // Ricrea il pannello di selezione delle carte aggiornato
+        cardSelectionPanel = createCardSelectionPanel();
+
+        // Aggiungi il nuovo pannello al contenitore
+        JScrollPane scrollPane = new JScrollPane(cardSelectionPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        containerPanel.add(scrollPane, BorderLayout.EAST);
+
+        // Aggiorna la UI
+        containerPanel.revalidate();
+        containerPanel.repaint();
+    }
+
+
 
 
     public static void main(String[] args) {

@@ -289,9 +289,10 @@ public class Game {
                 }
         }
 
-        public boolean addTableCard(int card){
-                if(!presentInDeck(card))
-                        return false;
+        public boolean addTableCard(int card,boolean random){
+                if(!random)
+                        if(!presentInDeck(card))
+                                return false;
                 for (int i = 0; i < table.length; i++) {
                         if (table[i] == 0) {
                                 table[i] = card;
